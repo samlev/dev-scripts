@@ -1,0 +1,67 @@
+#!/bin/bash
+
+set -e
+
+RED="\e[31m"
+GREEN="\e[32m"
+CODE="\e[1;34;40m"
+ENDCOLOR="\e[0m"
+
+DRY_RUN=0
+USAGE="Usage: ${CODE}dev-stop [options]${ENDCOLOR}
+
+Options:
+ ${CODE}-d${ENDCOLOR}   Do a ${GREEN}d${ENDCOLOR}ry run (show running containers and exit)
+ ${CODE}-h${ENDCOLOR}   Show this ${GREEN}h${ENDCOLOR}elp and exit"
+
+while getopts 'adh' OPTION
+do
+    case "${OPTION}" in
+        h) echo -e "$USAGE"; exit 1 ;;
+        d) DRY_RUN=1 ;;
+        *) ;;
+    esac
+done
+
+ALL_PROJECTS=$(dev-sail)
+RUNNING=$(dev-running)
+OTHERS=()
+declare -A RUNNING_ENVS
+
+for e in ${RUNNING[@]}; do
+    found=0
+    for d in ${ALL_PROJECTS[@]}; do
+        if [[ "${d}" == *"${e}" ]]; then
+            RUNNING_ENVS["$e"]="${d}"
+	    found=1
+	fi
+    done
+    if [ $found -eq 0 ]; then
+        OTHERS+=("${e}")
+    fi
+done
+
+
+if [ "${#RUNNING_ENVS[@]}" -gt 0 ]; then
+    echo -e "Found ${GREEN}${#RUNNING_ENVS[@]}${ENDCOLOR} sail environment(s) running:"
+    for e in ${!RUNNING_ENVS[@]}; do
+        dir="${RUNNING_ENVS[$e]}"
+        echo -e " - ${CODE}${e}${ENDCOLOR} (running from ${CODE}${dir}${ENDCOLOR})"
+    done
+    if [ $DRY_RUN -eq 0 ]; then
+        for e in ${!RUNNING_ENVS[@]}; do
+            dir="${RUNNING_ENVS[$e]}"
+            cd "${dir}"
+            echo -e "${RED}STOPPING ${CODE}${e}${ENDCOLOR}..."
+            vendor/bin/sail down
+            echo -e "${GREEN}DONE${ENDCOLOR}"
+        done
+    fi
+fi
+
+if [ "${#OTHERS[@]}" -gt 0 ]; then
+    echo -e "Found ${RED}${#OTHERS[@]}${ENDCOLOR} other docker-compose environment(s) running:"
+    for o in "${OTHERS[@]}"; do
+      echo -e " - ${CODE}${o}${ENDCOLOR}"
+    done
+fi

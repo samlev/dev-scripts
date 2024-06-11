@@ -1,0 +1,40 @@
+#!/bin/bash
+
+declare -A ALL
+
+for p in $(dev-sail); do
+  if [ ! -z "${p##*/}" ]; then ALL["${p##*/}"]=$p ; fi
+done
+
+PROJECTS=()
+
+for p in $( <<< "${!ALL[@]}" tr ' ' '\n' | sort ) ; do
+  PROJECTS+=("FALSE $p ${ALL[$p]}")
+done
+
+PROJECT=$( <<< "${PROJECTS[@]}" tr ' ' '\n' | zenity --width=800 --height=600 --list --radiolist --column="Select" --column="Project" --column="Path" --print-column="2" )
+
+if [[ "$PROJECT" =~ ^(-1|[015])?$ ]]; then
+  zenity --error --text="Could not open project"
+  exit 1;
+fi
+
+OPTIONS=(
+    "FALSE b Run_Sail_Build"
+    "FALSE q Run_Queue"
+    "FALSE n Don't_Run_Vite"
+    "FALSE s Don't_Run_Shell"
+    "FALSE i Don't_Open_IDE"
+    "FALSE t Don't_Terminate_existing"
+)
+
+FLAGS=$( <<< "${OPTIONS[@]}" tr ' ' '\n' | tr '_' ' ' | zenity --width=800 --height=600 --list --checklist --column="Select" --column="Flag" --column="Option" --separator='' --print-column="2" )
+
+if [[ "$FLAGS" =~ ^(-1|[015])$ ]]; then
+  zenity --error --text="Cancelled opening project"
+  exit 1;
+elif [ -z $FLAGS ]; then
+  dev $PROJECT
+else
+  $(dev "-$FLAGS" $PROJECT)
+fi

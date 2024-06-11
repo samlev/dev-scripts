@@ -1,0 +1,143 @@
+#!/bin/bash
+
+set -e
+
+BOLD="\e[1m"
+RED="\e[31m"
+GREEN="\e[32m"
+CODE="\e[1;34;40m"
+ENDCOLOR="\e[0m"
+
+RUN_BUILD=0
+RUN_QUEUE=0
+RUN_STOP=1
+RUN_NPM=1
+RUN_BASH=1
+RUN_IDE=1
+OPTIND=1
+
+USAGE="${BOLD}Usage${ENDCOLOR}:
+${CODE}dev [options] <project>${ENDCOLOR}
+
+${BOLD}Help Options${ENDCOLOR}:
+ ${CODE}-h${ENDCOLOR}   Show this ${GREEN}h${ENDCOLOR}elp and exit
+ ${CODE}-l${ENDCOLOR}   Show a ${GREEN}l${ENDCOLOR}ist of available projects and exit
+
+${BOLD}Running Options${ENDCOLOR}:
+ ${CODE}-b${ENDCOLOR}   Do a ${GREEN}b${ENDCOLOR}uild before starting the containers
+ ${CODE}-i${ENDCOLOR}   Don't Open the ${GREEN}i${ENDCOLOR}de in the target directory
+ ${CODE}-n${ENDCOLOR}   Don't Run ${GREEN}n${ENDCOLOR}pm in development mode
+ ${CODE}-q${ENDCOLOR}   Run a ${GREEN}q${ENDCOLOR}ueue worker
+ ${CODE}-s${ENDCOLOR}   Don't Open a ${GREEN}s${ENDCOLOR}hell once it the containers have started
+ ${CODE}-t${ENDCOLOR}   Don't ${GREEN}t${ENDCOLOR}erminate any running sail containers
+"
+
+show_help() {
+    EXIT_CODE="${@:-0}"
+    echo -e "$USAGE"
+    exit $EXIT_CODE
+}
+
+show_projects() {
+    EXIT_CODE="${@:-0}"
+
+    declare -A ALL
+    mn=-1
+    mp=-1
+
+    for p in $(dev-sail); do
+        n="${p##*/}"
+        if [ ${#n} -gt $mn ]; then mn=${#n}; fi
+        if [ ${#p} -gt $mp ]; then mp=${#p}; fi
+        ALL[$n]=$p
+    done;
+
+    tpl=$(printf "${GREEN}| ${ENDCOLOR}%%s%%-%ds ${GREEN}| ${ENDCOLOR}%%s%%-%ds ${GREEN}|\\\n" $mn $mp)
+    sep=$(printf "$tpl" "${GREEN}" "" "${GREEN}" "" | tr " " "=" | tr "|" "+")
+    
+    echo -e "There are ${GREEN}${#ALL[@]}${ENDCOLOR} available project(s):"
+
+    echo -e "${sep}"
+    printf "$tpl" $(echo -e "${BOLD}") "Project" $(echo -e "${BOLD}") "Path"
+    echo -e "${sep}"
+
+    for p in $( <<< "${!ALL[@]}" tr ' ' '\n' | sort ) ; do
+        printf "$tpl" $(echo -e "${CODE}") "$p" $(echo -e "${CODE}") "${ALL[$p]}"
+    done;
+    
+    echo -e "${sep}"
+
+    exit $EXIT_CODE
+}
+
+while getopts 'bhilnqst' OPTION
+do
+    case "${OPTION}" in
+        h) show_help ;;
+        l) show_projects ;;
+        b) RUN_BUILD=1 ;;
+        q) RUN_QUEUE=1 ;;
+        i) RUN_IDE=0 ;;
+        n) RUN_NPM=0 ;;
+        s) RUN_BASH=0 ;;
+        t) RUN_STOP=0 ;;
+        ?)
+            echo "Invalid option"
+            exit 0
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+[ "${1:-}" = "--" ] && shift
+
+PROJECT="${@}"
+
+if [ -z "$PROJECT" ]; then
+    echo -e "${RED}Missing project!${ENDCOLOR}"
+    show_help 2
+fi
+
+ALL_PROJECTS=($(dev-sail))
+
+FOUND_PROJECTS=()
+
+echo -e "Searching for project: ${CODE}${PROJECT}${ENDCOLOR}"
+
+for e in "${ALL_PROJECTS[@]}"; do
+    if [[ "$e" =~ ^.*"${PROJECT}".*$ ]]; then
+	    FOUND_PROJECTS+=("${e}")
+    fi
+done
+
+if [ "${#FOUND_PROJECTS[@]}" -ne 1 ]; then
+    echo -e "Found ${RED}${#FOUND_PROJECTS[@]}${ENDCOLOR} projects matching ${CODE}${PROJECT}${ENDCOLOR}"
+    for p in "${FOUND_PROJECTS[@]}" ; do
+        echo -e " - ${CODE}${p}${ENDCOLOR}"
+    done
+    exit 2;
+fi
+
+echo -e "Found project ${GREEN}${PROJECT}${ENDCOLOR} at ${CODE}${FOUND_PROJECTS[0]}${ENDCOLOR}"
+
+export PROJECT="${FOUND_PROJECTS[0]}"
+
+cd "${PROJECT}"
+
+if [ $RUN_STOP -eq 1 ]; then
+    dev-stop
+fi
+if [ $RUN_BUILD -eq 1 ]; then 
+    sail build
+fi
+
+export PROJECT=$PROJECT
+export RUN_BASH=$RUN_BASH
+export RUN_NPM=$RUN_NPM
+export RUN_QUEUE=$RUN_QUEUE
+
+if [ $RUN_IDE -eq 1 ]; then
+    nohup phpstorm "$PROJECT" 2>&1 > /dev/null &
+fi
+
+nohup kitty --session sail.conf  2>&1 > /dev/null &
