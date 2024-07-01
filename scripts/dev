@@ -124,10 +124,14 @@ fi
 if [ $RUN_BUILD -eq 1 ]; then 
     sail build
 fi
+RUN_NPM=1
+RUN_BASH=1
+if [ $SKIP_BASH -eq 1 ]; then RUN_BASH=0; fi
+if [ $SKIP_NPM -eq 1 ]; then RUN_NPM=0; fi
 
 export PROJECT=$PROJECT
-export RUN_BASH=!$SKIP_BASH
-export RUN_NPM=!$SKIP_NPM
+export RUN_BASH=$RUN_BASH
+export RUN_NPM=$RUN_NPM
 export RUN_QUEUE=$RUN_QUEUE
 
 if [ $SKIP_IDE -eq 0 ]; then
