@@ -1,23 +1,24 @@
 #!/bin/bash
 
-set -e
-
-RED="\e[31m"
-GREEN="\e[32m"
-CODE="\e[1;34;40m"
-ENDCOLOR="\e[0m"
+source ~/.config/dev-scripts/_colours.sh
+source ~/.config/dev-scripts/_functions.sh
 
 DRY_RUN=0
-USAGE="Usage: ${CODE}dev-stop [options]${ENDCOLOR}
+USAGE="Stop all currently running sail environments.
 
-Options:
- ${CODE}-d${ENDCOLOR}   Do a ${GREEN}d${ENDCOLOR}ry run (show running containers and exit)
- ${CODE}-h${ENDCOLOR}   Show this ${GREEN}h${ENDCOLOR}elp and exit"
+${BOLD}Usage:${ENDCOLOR}
+${CODE}dev-stop [options]${ENDCOLOR}
 
-while getopts 'adh' OPTION
+${BOLD}Help Options${ENDCOLOR}:
+ ${CODE}-h${ENDCOLOR}   Show this ${GREEN}h${ENDCOLOR}elp and exit
+
+${BOLD}Running Options${ENDCOLOR}:
+ ${CODE}-d${ENDCOLOR}   Do a ${GREEN}d${ENDCOLOR}ry run (show running containers and exit)"
+
+while getopts 'dh' OPTION
 do
     case "${OPTION}" in
-        h) echo -e "$USAGE"; exit 1 ;;
+        h) show_help ;;
         d) DRY_RUN=1 ;;
         *) ;;
     esac

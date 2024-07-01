@@ -1,0 +1,52 @@
+#!/usr/bin/bash
+
+source ~/.config/dev-scripts/_colours.sh
+source ~/.config/dev-scripts/_functions.sh
+
+USAGE="${CODE}dev-sail [options]${ENDCOLOR}
+
+Discover all projects in your home directory that use Laravel Sail.
+
+${BOLD}Help Options${ENDCOLOR}:
+ ${CODE}-h${ENDCOLOR}   Show this ${GREEN}h${ENDCOLOR}elp and exit
+
+${BOLD}Running Options${ENDCOLOR}:
+ ${CODE}-B${ENDCOLOR}   ${GREEN}B${ENDCOLOR}ypass the cache (ignore the cache)
+ ${CODE}-D${ENDCOLOR}   ${GREEN}D${ENDCOLOR}ry run (don't cache the results)
+ ${CODE}-F${ENDCOLOR}   ${GREEN}F${ENDCOLOR}orce refresh the cache (delete the cache)
+"
+
+BYPASS_CACHE=0
+DRY_RUN=0
+FORCE_REFRESH=0
+
+while getopts 'BDFh' OPTION
+do
+    case "${OPTION}" in
+        B) BYPASS_CACHE=1 ;;
+        D) DRY_RUN=1 ;;
+        F) FORCE_REFRESH=1 ;;
+        h) show_help ;;
+        ?)
+            echo "Invalid option ${OPTION}"
+            exit 0
+            ;;
+    esac
+done
+
+if [ $FORCE_REFRESH -eq 1 ]; then
+    rm -f ~/.config/dev-scripts/sail-cache
+fi
+
+if [[ -f ~/.config/dev-scripts/sail-cache ]] && [[ $BYPASS_CACHE -eq 0 ]]; then
+    cat ~/.config/dev-scripts/sail-cache
+    exit 0
+fi
+
+PROJECTS=$(find ~/ -type f -wholename "**/vendor/bin/sail" -exec bash -c 'echo "${1: 0:-16}"' _ {} \;)
+
+if [ $DRY_RUN -eq 0 ]; then
+    echo "$PROJECTS" > ~/.config/dev-scripts/sail-cache
+fi
+
+echo "$PROJECTS"

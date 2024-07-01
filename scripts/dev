@@ -1,22 +1,19 @@
 #!/bin/bash
 
-set -e
-
-BOLD="\e[1m"
-RED="\e[31m"
-GREEN="\e[32m"
-CODE="\e[1;34;40m"
-ENDCOLOR="\e[0m"
+source ~/.config/dev-scripts/_colours.sh
+source ~/.config/dev-scripts/_functions.sh
 
 RUN_BUILD=0
 RUN_QUEUE=0
-RUN_STOP=1
-RUN_NPM=1
-RUN_BASH=1
-RUN_IDE=1
+SKIP_STOP=0
+SKIP_NPM=0
+SKIP_BASH=0
+SKIP_IDE=0
 OPTIND=1
 
-USAGE="${BOLD}Usage${ENDCOLOR}:
+USAGE="Open a project that uses Laravel Sail
+
+${BOLD}Usage${ENDCOLOR}:
 ${CODE}dev [options] <project>${ENDCOLOR}
 
 ${BOLD}Help Options${ENDCOLOR}:
@@ -31,12 +28,6 @@ ${BOLD}Running Options${ENDCOLOR}:
  ${CODE}-s${ENDCOLOR}   Don't Open a ${GREEN}s${ENDCOLOR}hell once it the containers have started
  ${CODE}-t${ENDCOLOR}   Don't ${GREEN}t${ENDCOLOR}erminate any running sail containers
 "
-
-show_help() {
-    EXIT_CODE="${@:-0}"
-    echo -e "$USAGE"
-    exit $EXIT_CODE
-}
 
 show_projects() {
     EXIT_CODE="${@:-0}"
@@ -77,16 +68,19 @@ do
         l) show_projects ;;
         b) RUN_BUILD=1 ;;
         q) RUN_QUEUE=1 ;;
-        i) RUN_IDE=0 ;;
-        n) RUN_NPM=0 ;;
-        s) RUN_BASH=0 ;;
-        t) RUN_STOP=0 ;;
+        i) SKIP_IDE=1 ;;
+        n) SKIP_NPM=1 ;;
+        s) SKIP_BASH=1 ;;
+        t) SKIP_STOP=1 ;;
         ?)
             echo "Invalid option"
             exit 0
             ;;
     esac
 done
+
+missing_binary 'kitty'
+missing_file "${HOME}/.config/kitty/sail.conf"
 
 shift $((OPTIND-1))
 [ "${1:-}" = "--" ] && shift
@@ -124,7 +118,7 @@ export PROJECT="${FOUND_PROJECTS[0]}"
 
 cd "${PROJECT}"
 
-if [ $RUN_STOP -eq 1 ]; then
+if [ $SKIP_STOP -eq 0 ]; then
     dev-stop
 fi
 if [ $RUN_BUILD -eq 1 ]; then 
@@ -132,11 +126,12 @@ if [ $RUN_BUILD -eq 1 ]; then
 fi
 
 export PROJECT=$PROJECT
-export RUN_BASH=$RUN_BASH
-export RUN_NPM=$RUN_NPM
+export RUN_BASH=!$SKIP_BASH
+export RUN_NPM=!$SKIP_NPM
 export RUN_QUEUE=$RUN_QUEUE
 
-if [ $RUN_IDE -eq 1 ]; then
+if [ $SKIP_IDE -eq 0 ]; then
+    missing_binary 'phpstorm'
     nohup phpstorm "$PROJECT" 2>&1 > /dev/null &
 fi
 
