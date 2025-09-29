@@ -67,7 +67,7 @@ show_projects() {
     exit $EXIT_CODE
 }
 
-while getopts 'bhilnqst' OPTION
+while getopts 'hldDbqiInsScC' OPTION
 do
     case "${OPTION}" in
         h) show_help ;;
@@ -91,9 +91,9 @@ do
 done
 
 if [ $RUN_DEFAULT -eq 2 ]; then RUN_DEFAULT=1; fi
-if [ RUN_IDE -eq 2 ]; then RUN_IDE=$RUN_DEFAULT; fi
-if [ RUN_BASH -eq 2 ]; then RUN_BASH=$RUN_DEFAULT; fi
-if [ RUN_STOP -eq 2 ]; then RUN_STOP=$RUN_DEFAULT; fi
+if [ $RUN_IDE -eq 2 ]; then RUN_IDE=$RUN_DEFAULT; fi
+if [ $RUN_BASH -eq 2 ]; then RUN_BASH=$RUN_DEFAULT; fi
+if [ $RUN_STOP -eq 2 ]; then RUN_STOP=$RUN_DEFAULT; fi
 
 missing_binary 'kitty'
 missing_file "${HOME}/.config/kitty/sail.conf"
@@ -148,7 +148,7 @@ export RUN_QUEUE=$RUN_QUEUE
 
 if [ $RUN_IDE -eq 1 ]; then
     missing_binary 'phpstorm'
-    nohup phpstorm "$PROJECT" 2>&1 > /dev/null &
+    nohup phpstorm "$PROJECT" > /dev/null 2>&1 &
 fi
 
-nohup kitty --session sail.conf  2>&1 > /dev/null &
+nohup kitty --session sail.conf > /dev/null 2>&1 &

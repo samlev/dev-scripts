@@ -45,12 +45,12 @@ done
 
 if [ "${#RUNNING_ENVS[@]}" -gt 0 ]; then
     echo -e "Found ${GREEN}${#RUNNING_ENVS[@]}${ENDCOLOR} sail environment(s) running:"
-    for e in ${!RUNNING_ENVS[@]}; do
+    for e in "${!RUNNING_ENVS[@]}"; do
         dir="${RUNNING_ENVS[$e]}"
         echo -e " - ${CODE}${e}${ENDCOLOR} (running from ${CODE}${dir}${ENDCOLOR})"
     done
     if [ $DRY_RUN -eq 0 ]; then
-        for e in ${!RUNNING_ENVS[@]}; do
+        for e in "${!RUNNING_ENVS[@]}"; do
             dir="${RUNNING_ENVS[$e]}"
             cd "${dir}"
             echo -e "${RED}STOPPING ${CODE}${e}${ENDCOLOR}..."

@@ -36,5 +36,5 @@ if [[ "$FLAGS" =~ ^(-1|[015])$ ]]; then
 elif [ -z $FLAGS ]; then
   dev -D $PROJECT
 else
-  $(dev "-D$FLAGS" $PROJECT)
+  eval "$(dev -D${FLAGS} ${PROJECT})"
 fi

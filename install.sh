@@ -3,7 +3,7 @@
 source "${PWD}/config/dev-scripts/_colours.sh"
 source "${PWD}/config/dev-scripts/_functions.sh"
 
-BINARY_LOCATION="${HOME}/.local/bin/"
+BINARY_LOCATION="${HOME}/.local/bin"
 
 USAGE="Install dev scripts
 
@@ -25,20 +25,39 @@ ${BOLD}Running Options${ENDCOLOR}:
  ${CODE}-d${ENDCOLOR}   Check ${GREEN}d${ENDCOLOR}ependencies only, then exit
  ${CODE}-F${ENDCOLOR}   ${GREEN}F${ENDCOLOR}orce re-install, or uninstall from non-default binary directories
  ${CODE}-U${ENDCOLOR}   ${GREEN}U${ENDCOLOR}n-install dev scripts
+ ${CODE}-v${ENDCOLOR}   Output ${GREEN}v${ENDCOLOR}erbose information
 "
 
 DRY_RUN=0
 FORCE=0
 UNINSTALL=0
+VERBOSE=0
+OPTIONS=()
 
-while getopts 'db:FhU' OPTION
+while getopts 'db:FhUv' OPTION
 do
     case "${OPTION}" in
-        b) BINARY_LOCATION="${OPTARG}" ;;
-        d) DRY_RUN=1 ;;
-        F) FORCE=1 ;;
+        b)
+            BINARY_LOCATION="${OPTARG}"
+            OPTIONS+=("-b${BINARY_LOCATION}")
+            ;;
+        d)
+            DRY_RUN=1
+            OPTIONS+=("-d")
+            ;;
+        F)
+            FORCE=1
+            OPTIONS+=("-F")
+            ;;
+        v)
+            VERBOSE=1
+            OPTIONS+=("-v")
+            ;;
         h) show_help ;;
-        U) UNINSTALL=1 ;;
+        U)
+            UNINSTALL=1
+            OPTIONS+=("-U")
+            ;;
         ?)
             echo "Invalid option"
             exit 0
@@ -46,7 +65,12 @@ do
     esac
 done
 
+if [ $VERBOSE -eq 1 ]; then
+  echo -e "Selected options: ${CODE}${OPTIONS[*]}${ENDCOLOR}"
+fi
+
 # Check for dependencies
+if [ $VERBOSE -eq 1 ]; then echo "Checking dependencies..."; fi
 missing_binary "docker"
 missing_binary "kitty"
 missing_binary "nohup"
@@ -54,6 +78,7 @@ missing_binary "phpstorm"
 missing_binary "zenity"
 
 # Ensure that directories are accessible
+if [ $VERBOSE -eq 1 ]; then echo "Checking directories..."; fi
 missing_directory "${HOME}/.config"
 missing_directory "${HOME}/.config/kitty"
 missing_directory "${BINARY_LOCATION}"
@@ -61,6 +86,7 @@ missing_directory "${BINARY_LOCATION}"
 SCRIPTS=(dev dev-running dev-sail dev-selector dev-stop)
 
 # Ensure that all the files are where we expect them to be
+if [ $VERBOSE -eq 1 ]; then echo "Checking files..."; fi
 missing_file "${PWD}/config/dev-scripts/_colours.sh"
 missing_file "${PWD}/config/dev-scripts/_functions.sh"
 missing_file "${PWD}/config/kitty/sail.conf"
@@ -74,15 +100,20 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 if [[ $FORCE -eq 1 ]] || [[ $UNINSTALL -eq 1 ]]; then
+    if [ $VERBOSE -eq 1 ]; then echo "Removing existing files"; fi
+    if [ $VERBOSE -eq 1 ]; then echo -e "Removing file ${CODE}${HOME}/.config/dev-scripts${ENDCOLOR}"; fi
     rm -rf "${HOME}/.config/dev-scripts"
+    if [ $VERBOSE -eq 1 ]; then echo -e "Removing file ${CODE}${HOME}/.config/kitty/sail.conf${ENDCOLOR}"; fi
     rm -f "${HOME}/.config/kitty/sail.conf"
 
     for SCRIPT in "${SCRIPTS[@]}"; do
       EXPECTED="${BINARY_LOCATION}/${SCRIPT}"
       REAL=$(which "${SCRIPT}")
       if [[ -f "${EXPECTED}" ]]; then
+        if [ $VERBOSE -eq 1 ]; then echo -e "Removing file ${CODE}${EXPECTED}${ENDCOLOR}"; fi
         rm "${EXPECTED}"
       elif [[ $UNINSTALL -eq 1 ]] && [[ $FORCE -eq 1 ]] && [[ ! -z "${REAL}" ]]; then
+        if [ $VERBOSE -eq 1 ]; then echo -e "Removing file ${CODE}${EXPECTED}${ENDCOLOR}"; fi
         rm -f "${REAL}"
       fi
     done
@@ -93,16 +124,21 @@ if [ $UNINSTALL -eq 1 ]; then
   exit 0
 fi
 
+if [ $VERBOSE -eq 1 ]; then echo "Installing new files..."; fi
+if [ $VERBOSE -eq 1 ]; then echo -e "Copying scripts to ${CODE}${HOME}/.config/dev-scripts${ENDCOLOR}"; fi
 cp -r "${PWD}/config/dev-scripts" "${HOME}/.config/"
 if [ ! -f "${HOME}/.config/kitty/sail.conf" ]; then
+  if [ $VERBOSE -eq 1 ]; then echo -e "Copying kitty config to ${CODE}${HOME}/.config/kitty/${ENDCOLOR}"; fi
   cp "${PWD}/config/kitty/sail.conf" "${HOME}/.config/kitty/"
 fi
 for SCRIPT in "${SCRIPTS[@]}"; do
   TARGET="${BINARY_LOCATION}/${SCRIPT}"
   if [ ! -f "${TARGET}" ]; then
+    if [ $VERBOSE -eq 1 ]; then echo -e "Copying ${CODE}${SCRIPT}${ENDCOLOR} to ${CODE}${TARGET}${ENDCOLOR}"; fi
     cp "${PWD}/scripts/${SCRIPT}" "${TARGET}"
   fi
   if [ ! -x "${TARGET}" ]; then
+    if [ $VERBOSE -eq 1 ]; then echo -e "Setting permissions for ${CODE}${TARGET}${ENDCOLOR}"; fi
     chmod +x "${TARGET}"
   fi
 
