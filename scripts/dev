@@ -5,10 +5,11 @@ source ~/.config/dev-scripts/_functions.sh
 
 RUN_BUILD=0
 RUN_QUEUE=0
-SKIP_STOP=0
-SKIP_NPM=0
-SKIP_BASH=0
-SKIP_IDE=0
+RUN_NPM=0
+RUN_STOP=2
+RUN_BASH=2
+RUN_IDE=2
+RUN_DEFAULT=2
 OPTIND=1
 
 USAGE="Open a project that uses Laravel Sail
@@ -22,11 +23,16 @@ ${BOLD}Help Options${ENDCOLOR}:
 
 ${BOLD}Running Options${ENDCOLOR}:
  ${CODE}-b${ENDCOLOR}   Do a ${GREEN}b${ENDCOLOR}uild before starting the containers
- ${CODE}-i${ENDCOLOR}   Don't Open the ${GREEN}i${ENDCOLOR}de in the target directory
- ${CODE}-n${ENDCOLOR}   Don't Run ${GREEN}n${ENDCOLOR}pm in development mode
+ ${CODE}-i${ENDCOLOR}   Open the ${GREEN}i${ENDCOLOR}de in the target directory (default)
+ ${CODE}-I${ENDCOLOR}   Negate ${CODE}-i${ENDCOLOR} (don't open the IDE)
+ ${CODE}-n${ENDCOLOR}   Run ${GREEN}n${ENDCOLOR}pm in development mode
  ${CODE}-q${ENDCOLOR}   Run a ${GREEN}q${ENDCOLOR}ueue worker
- ${CODE}-s${ENDCOLOR}   Don't Open a ${GREEN}s${ENDCOLOR}hell once it the containers have started
- ${CODE}-t${ENDCOLOR}   Don't ${GREEN}t${ENDCOLOR}erminate any running sail containers
+ ${CODE}-s${ENDCOLOR}   Open a ${GREEN}s${ENDCOLOR}hell once it the containers have started (default)
+ ${CODE}-S${ENDCOLOR}   Negate ${CODE}-s${ENDCOLOR} (don't open a shell)
+ ${CODE}-c${ENDCOLOR}   Stop any running sail ${GREEN}c${ENDCOLOR}ontainers (default)
+ ${CODE}-C${ENDCOLOR}   Negate ${CODE}-c${ENDCOLOR} (don't stop running containers)
+ ${CODE}-d${ENDCOLOR}   Run ${GREEN}d${ENDCOLOR}efault settings (equivalent of ${CODE}-sci${ENDCOLOR})
+ ${CODE}-D${ENDCOLOR}   Negate ${CODE}-d${ENDCOLOR}
 "
 
 show_projects() {
@@ -66,18 +72,28 @@ do
     case "${OPTION}" in
         h) show_help ;;
         l) show_projects ;;
+        d) RUN_DEFAULT=1 ;;
+        D) RUN_DEFAULT=0 ;;
         b) RUN_BUILD=1 ;;
         q) RUN_QUEUE=1 ;;
-        i) SKIP_IDE=1 ;;
-        n) SKIP_NPM=1 ;;
-        s) SKIP_BASH=1 ;;
-        t) SKIP_STOP=1 ;;
+        i) RUN_IDE=1 ;;
+        I) RUN_IDE=0 ;;
+        n) RUN_NPM=1 ;;
+        s) RUN_BASH=1 ;;
+        S) RUN_BASH=0 ;;
+        c) RUN_STOP=1 ;;
+        C) RUN_STOP=0 ;;
         ?)
             echo "Invalid option"
             exit 0
             ;;
     esac
 done
+
+if [ $RUN_DEFAULT -eq 2 ]; then RUN_DEFAULT=1; fi
+if [ RUN_IDE -eq 2 ]; then RUN_IDE=$RUN_DEFAULT; fi
+if [ RUN_BASH -eq 2 ]; then RUN_BASH=$RUN_DEFAULT; fi
+if [ RUN_STOP -eq 2 ]; then RUN_STOP=$RUN_DEFAULT; fi
 
 missing_binary 'kitty'
 missing_file "${HOME}/.config/kitty/sail.conf"
@@ -118,23 +134,19 @@ export PROJECT="${FOUND_PROJECTS[0]}"
 
 cd "${PROJECT}"
 
-if [ $SKIP_STOP -eq 0 ]; then
+if [ $RUN_STOP -eq 0 ]; then
     dev-stop
 fi
 if [ $RUN_BUILD -eq 1 ]; then 
     sail build
 fi
-RUN_NPM=1
-RUN_BASH=1
-if [ $SKIP_BASH -eq 1 ]; then RUN_BASH=0; fi
-if [ $SKIP_NPM -eq 1 ]; then RUN_NPM=0; fi
 
 export PROJECT=$PROJECT
 export RUN_BASH=$RUN_BASH
 export RUN_NPM=$RUN_NPM
 export RUN_QUEUE=$RUN_QUEUE
 
-if [ $SKIP_IDE -eq 0 ]; then
+if [ $RUN_IDE -eq 1 ]; then
     missing_binary 'phpstorm'
     nohup phpstorm "$PROJECT" 2>&1 > /dev/null &
 fi
